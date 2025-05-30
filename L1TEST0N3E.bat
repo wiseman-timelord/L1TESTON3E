@@ -69,12 +69,6 @@ call :DisplaySeparatorThick
 set /p "choice=Selection; Menu Options = 1-2, Exit Batch = X: "
 
 if /i "%choice%"=="1" (
-    cls
-    color 06
-    call :DisplaySeparatorThick
-    echo     LiteStone: Launcher
-    call :DisplaySeparatorThick
-    echo.
     echo Starting %TITLE%...
     
     call .\.venv\Scripts\activate.bat
@@ -93,12 +87,6 @@ if /i "%choice%"=="1" (
 )
 
 if /i "%choice%"=="2" (
-    cls
-    color 06
-    call :DisplaySeparatorThick
-    echo     LiteStone: Installer
-    call :DisplaySeparatorThick
-    echo.
     echo Running Installer...
     timeout /t 1 >nul
     cls
