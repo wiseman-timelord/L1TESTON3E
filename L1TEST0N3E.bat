@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set "TITLE=L1TESTON3E"
+set "TITLE=LiteStone"
 title %TITLE%
 
 :: Set script directory and change to it
@@ -34,8 +34,7 @@ goto :eof
 
 :DisplayTitle
 call :DisplaySeparatorThick
-echo          L1TESTON3E - Tree-Document Editor
-echo          ==================================
+echo     LiteStone - Batch Menu
 call :DisplaySeparatorThin
 goto :eof
 
@@ -43,8 +42,10 @@ goto :eof
 cls
 color 0F
 call :DisplayTitle
-echo     L1TESTON3E: Batch Menu
-call :DisplaySeparatorThick
+echo.
+echo.
+echo.
+echo.
 echo.
 echo.
 echo.
@@ -61,6 +62,9 @@ echo.
 echo.
 echo.
 echo.
+echo.
+echo.
+echo.
 call :DisplaySeparatorThick
 set /p "choice=Selection; Menu Options = 1-2, Exit Batch = X: "
 
@@ -68,7 +72,7 @@ if /i "%choice%"=="1" (
     cls
     color 06
     call :DisplaySeparatorThick
-    echo     L1TESTON3E: Launcher
+    echo     LiteStone: Launcher
     call :DisplaySeparatorThick
     echo.
     echo Starting %TITLE%...
@@ -92,7 +96,7 @@ if /i "%choice%"=="2" (
     cls
     color 06
     call :DisplaySeparatorThick
-    echo     L1TESTON3E: Installer
+    echo     LiteStone: Installer
     call :DisplaySeparatorThick
     echo.
     echo Running Installer...
@@ -125,5 +129,7 @@ cls
 color 0F
 call :DisplayTitle
 echo. 
+echo Exit procedure initialized.
+echo Exiting in 2 seconds...
 timeout /t 2 >nul
 exit

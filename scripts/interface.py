@@ -6,11 +6,11 @@ from PyQt5.QtWidgets import (
     QHBoxLayout, QWidget, QToolBar, QPushButton, QComboBox, QFileDialog,
     QMessageBox, QMenu, QTabWidget, QInputDialog, QDialog, QFormLayout, QDialogButtonBox
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QByteArray, QBuffer, QIODevice
 from PyQt5.QtGui import QFont
 from utility import (
     Node, save_tree_to_custom_format, load_tree_from_custom_format,
-    import_cherrytree, add_node_to_tree, remove_node_from_tree,
+    import_cherrytree, import_notecase, add_node_to_tree, remove_node_from_tree,
     move_node_up, move_node_down, indent_node, outdent_node, merge_trees
 )
 from temporary import clipboard, clipboard_action, settings, load_settings
@@ -39,6 +39,7 @@ class DocumentTab(QWidget):
         self.text_edit = QTextEdit()
         self.text_edit.textChanged.connect(self.update_node_content)
         self.text_edit.setFont(QFont(settings.get("default_font", "Arial"), settings.get("default_font_size", 12)))
+        self.text_edit.setAcceptRichText(True)  # Enable rich text for images
         layout.addWidget(self.text_edit, 2)
         self.setLayout(layout)
         self.refresh_tree_widget()
@@ -99,11 +100,16 @@ class DocumentTab(QWidget):
         item = self.tree_widget.itemAt(position)
         if item:
             menu = QMenu()
-            menu.addAction("Copy", self.copy_node)
-            menu.addAction("Cut", self.cut_node)
-            menu.addAction("Paste", self.paste_node)
-            menu.addAction("Rename", self.rename_node)
-            menu.addAction("Delete", self.delete_node)
+            copy_action = menu.addAction("Copy", self.copy_node)
+            copy_action.setToolTip("Copy the selected node and its subnodes")
+            cut_action = menu.addAction("Cut", self.cut_node)
+            cut_action.setToolTip("Cut the selected node and its subnodes")
+            paste_action = menu.addAction("Paste", self.paste_node)
+            paste_action.setToolTip("Paste the copied/cut node as a child")
+            rename_action = menu.addAction("Rename", self.rename_node)
+            rename_action.setToolTip("Rename the selected node")
+            delete_action = menu.addAction("Delete", self.delete_node)
+            delete_action.setToolTip("Delete the selected node and its subnodes")
             menu.exec_(self.tree_widget.viewport().mapToGlobal(position))
 
     def copy_node(self):
@@ -131,6 +137,9 @@ class DocumentTab(QWidget):
             self.selected_node.add_child(new_node)
             self.refresh_tree_widget()
             self.is_modified = True
+            if clipboard_action == "cut":
+                clipboard = None
+                clipboard_action = None
 
     def rename_node(self):
         """Rename the selected node."""
@@ -145,7 +154,7 @@ class DocumentTab(QWidget):
             self.selected_node = None
             self.text_edit.clear()
             self.is_modified = True
-
+            
 class OptionsDialog(QDialog):
     """Dialog for configuring application settings."""
     def __init__(self, parent=None):
@@ -201,27 +210,37 @@ class MainWindow(QMainWindow):
         # Toolbar
         toolbar = QToolBar()
         self.addToolBar(toolbar)
-        toolbar.addAction("Add Node", self.add_node)
-        toolbar.addAction("Remove Node", self.remove_node)
-        toolbar.addAction("Copy Node", self.copy_node)
-        toolbar.addAction("Paste Node", self.paste_node)
+        add_node_action = toolbar.addAction("Add Node", self.add_node)
+        add_node_action.setToolTip("Add a new node to the selected node")
+        remove_node_action = toolbar.addAction("Remove Node", self.remove_node)
+        remove_node_action.setToolTip("Remove the selected node")
+        copy_node_action = toolbar.addAction("Copy Node", self.copy_node)
+        copy_node_action.setToolTip("Copy the selected node and its subnodes")
+        paste_node_action = toolbar.addAction("Paste Node", self.paste_node)
+        paste_node_action.setToolTip("Paste the copied node as a child of the selected node")
         self.font_combo = QComboBox()
         self.font_combo.addItems(["Arial", "Times New Roman", "Courier New"])
         self.font_combo.setCurrentText(settings.get("default_font", "Arial"))
         self.font_combo.currentTextChanged.connect(self.change_font)
+        self.font_combo.setToolTip("Select the font for the text editor")
         toolbar.addWidget(self.font_combo)
         self.size_combo = QComboBox()
         self.size_combo.addItems(["10", "12", "14", "16", "18"])
         self.size_combo.setCurrentText(str(settings.get("default_font_size", 12)))
         self.size_combo.currentTextChanged.connect(self.change_font_size)
+        self.size_combo.setToolTip("Select the font size for the text editor")
         toolbar.addWidget(self.size_combo)
         self.bold_button = QPushButton("B")
         self.bold_button.setCheckable(True)
         self.bold_button.clicked.connect(self.toggle_bold)
+        self.bold_button.setToolTip("Toggle bold text formatting")
         toolbar.addWidget(self.bold_button)
-        toolbar.addAction("Left", lambda: self.set_text_alignment(Qt.AlignLeft))
-        toolbar.addAction("Center", lambda: self.set_text_alignment(Qt.AlignCenter))
-        toolbar.addAction("Right", lambda: self.set_text_alignment(Qt.AlignRight))
+        left_action = toolbar.addAction("Left", lambda: self.set_text_alignment(Qt.AlignLeft))
+        left_action.setToolTip("Align text to the left")
+        center_action = toolbar.addAction("Center", lambda: self.set_text_alignment(Qt.AlignCenter))
+        center_action.setToolTip("Align text to the center")
+        right_action = toolbar.addAction("Right", lambda: self.set_text_alignment(Qt.AlignRight))
+        right_action.setToolTip("Align text to the right")
 
     def new_file(self):
         """Create a new blank document tab."""
@@ -242,14 +261,17 @@ class MainWindow(QMainWindow):
                 elif file_path.endswith(".ctd"):
                     root_node = import_cherrytree(file_path)
                 elif file_path.endswith(".ncd"):
-                    # Placeholder: assumes import_notecase exists in utility.py
-                    raise NotImplementedError("NoteCase import not implemented yet")
+                    root_node = import_notecase(file_path)
                 else:
-                    raise ValueError("Unsupported file format.")
+                    raise ValueError("Unsupported file format")
                 tab = DocumentTab(root_node, self)
                 tab.file_path = file_path
                 self.tab_widget.addTab(tab, os.path.basename(file_path))
                 self.tab_widget.setCurrentWidget(tab)
+            except FileNotFoundError:
+                QMessageBox.critical(self, "Error", f"File not found: {file_path}")
+            except ValueError as e:
+                QMessageBox.critical(self, "Error", f"Invalid file format: {e}")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to open file: {e}")
 
@@ -310,13 +332,16 @@ class MainWindow(QMainWindow):
                     elif file_path.endswith(".ctd"):
                         merge_root_node = import_cherrytree(file_path)
                     elif file_path.endswith(".ncd"):
-                        # Placeholder: assumes import_notecase exists
-                        raise NotImplementedError("NoteCase import not implemented yet")
+                        merge_root_node = import_notecase(file_path)
                     else:
-                        raise ValueError("Unsupported file format.")
+                        raise ValueError("Unsupported file format")
                     merge_trees(current_tab.root_node, merge_root_node)
                     current_tab.refresh_tree_widget()
                     current_tab.is_modified = True
+                except FileNotFoundError:
+                    QMessageBox.critical(self, "Error", f"File not found: {file_path}")
+                except ValueError as e:
+                    QMessageBox.critical(self, "Error", f"Invalid file format: {e}")
                 except Exception as e:
                     QMessageBox.critical(self, "Error", f"Failed to merge file: {e}")
 
@@ -426,7 +451,21 @@ class MainWindow(QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        """Save settings when the application closes."""
+        """Prompt to save unsaved changes before closing the application."""
+        for i in range(self.tab_widget.count()):
+            widget = self.tab_widget.widget(i)
+            if widget and widget.is_modified:
+                reply = QMessageBox.question(
+                    self, "Unsaved Changes",
+                    f"Do you want to save changes in {self.tab_widget.tabText(i)} before closing?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
+                )
+                if reply == QMessageBox.Save:
+                    self.tab_widget.setCurrentIndex(i)
+                    self.save_file()
+                elif reply == QMessageBox.Cancel:
+                    event.ignore()
+                    return
         settings["window_width"] = self.width()
         settings["window_height"] = self.height()
         settings["window_x"] = self.x()

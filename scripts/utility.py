@@ -146,6 +146,11 @@ def import_notecase(file_name):
         conn = sqlite3.connect(file_name)
         cursor = conn.cursor()
         
+        # Check if nodes table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='nodes'")
+        if not cursor.fetchone():
+            raise ValueError("No 'nodes' table found in NoteCase database")
+        
         try:
             cursor.execute("SELECT id, parent_id, title, html_content FROM nodes ORDER BY parent_id, id")
             all_rows = cursor.fetchall()
@@ -155,6 +160,9 @@ def import_notecase(file_name):
                 all_rows = cursor.fetchall()
             except sqlite3.OperationalError as e_inner:
                 raise ValueError(f"Could not find expected table/columns in NoteCase DB: {e_inner}")
+        
+        if not all_rows:
+            raise ValueError("NoteCase database is empty")
         
         app_root_node = Node("Imported NoteCase")
         db_nodes_map = {}
