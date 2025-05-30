@@ -4,11 +4,12 @@ setlocal enabledelayedexpansion
 set "TITLE=LiteStone"
 title %TITLE%
 
-:: Set script directory and change to it
+:: DP0 TO SCRIPT BLOCK, DO NOT MODIFY or MOVE: START
 set "ScriptDirectory=%~dp0"
 set "ScriptDirectory=%ScriptDirectory:~0,-1%"
 cd /d "%ScriptDirectory%"
 echo Dp0'd to Script.
+:: DP0 TO SCRIPT BLOCK, DO NOT MODIFY or MOVE: END
 
 :: Check for Administrator privileges
 net session >nul 2>&1
@@ -70,9 +71,20 @@ set /p "choice=Selection; Menu Options = 1-2, Exit Batch = X: "
 
 if /i "%choice%"=="1" (
     echo Starting %TITLE%...
+    timeout /t 1 >nul
+	
+    cls
+	call :DisplaySeparatorThick
+	echo     L1teSton3e - Launching Program
+	call :DisplaySeparatorThick
+	echo.
+	
+    :: Print current working directory
+    echo Working Dir: %cd%
     
-    call .\.venv\Scripts\activate.bat
-    echo Activated: `.venv`
+    :: Use correct venv path (venv instead of .venv)
+    call .\venv\Scripts\activate.bat
+    echo Activated: `venv`
     
     python.exe .\launcher.py
     
@@ -81,8 +93,8 @@ if /i "%choice%"=="1" (
         pause
     )
     
-    call .\.venv\Scripts\deactivate.bat
-    echo DeActivated: `.venv`
+    call .\venv\Scripts\deactivate.bat
+    echo DeActivated: `venv`
     goto MainMenu
 )
 

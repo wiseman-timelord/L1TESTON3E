@@ -13,7 +13,8 @@ def print_header(title):
     clear_screen()
     print("=" * 120)
     print(f"    {title}")
-    print("=" * 120, "")
+    print("=" * 120)
+    print("")
 
 def main():
     """Main installation function with enhanced UI and validation."""
@@ -66,24 +67,44 @@ def main():
         install_steps.append(("Create requirements.txt", "Fail", str(e)))
     
     # Step 4: Create virtual environment
+    venv_dir = os.path.join(root_dir, 'venv')
+    python_exe = None
+    
     try:
-        venv_dir = os.path.join(root_dir, 'venv')
         if not os.path.exists(venv_dir):
             subprocess.check_call([sys.executable, '-m', 'venv', venv_dir])
             install_steps.append(("Create virtual environment", "Pass", venv_dir))
         else:
             install_steps.append(("Virtual environment exists", "Pass", venv_dir))
+        
+        # Get Python executable path
+        if os.name == 'nt':
+            python_exe = os.path.join(venv_dir, 'Scripts', 'python.exe')
+        else:
+            python_exe = os.path.join(venv_dir, 'bin', 'python')
+            
     except Exception as e:
         install_steps.append(("Create virtual environment", "Fail", str(e)))
     
-    # Step 5: Install requirements
+    # Step 5: Upgrade pip in virtual environment
+    if python_exe and os.path.exists(python_exe):
+        try:
+            print("\nUpgrading pip...")
+            subprocess.check_call([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip'])
+            install_steps.append(("Upgrade pip", "Pass", ""))
+        except Exception as e:
+            install_steps.append(("Upgrade pip", "Fail", str(e)))
+    else:
+        install_steps.append(("Upgrade pip", "Skip", "Python executable not found"))
+    
+    # Step 6: Install requirements
     try:
-        if os.path.exists(requirements_file):
-            python_exe = os.path.join(venv_dir, 'Scripts', 'python.exe' if os.name == 'nt' else 'bin/python')
+        if os.path.exists(requirements_file) and python_exe and os.path.exists(python_exe):
             subprocess.check_call([python_exe, '-m', 'pip', 'install', '-r', requirements_file])
             install_steps.append(("Install requirements", "Pass", requirements_file))
         else:
-            install_steps.append(("Install requirements", "Fail", "requirements.txt not found"))
+            reason = "requirements.txt not found" if not os.path.exists(requirements_file) else "Python executable not found"
+            install_steps.append(("Install requirements", "Fail", reason))
     except Exception as e:
         install_steps.append(("Install requirements", "Fail", str(e)))
     
@@ -104,7 +125,7 @@ def main():
             overall_status = "Fail"
             break
     
-    print(f"\nFinal Result: {overall_status}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+    print(f"\nFinal Result: {overall_status}\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
     print("-" * 120)
     print("Press enter key to return to Batch Menu...")
     input()

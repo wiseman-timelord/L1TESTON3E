@@ -1,6 +1,8 @@
 import os
 import subprocess
 import sys
+from PyQt5.QtWidgets import QApplication
+from scripts.interface import MainWindow  # Corrected import path
 
 def main():
     try:
