@@ -2,12 +2,13 @@ import sys
 import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTreeWidget, QTreeWidgetItem, QTextEdit,
                              QVBoxLayout, QWidget, QHBoxLayout, QToolBar, QPushButton,
-                             QComboBox, QFileDialog, QMessageBox, QMenu)
+                             QComboBox, QFileDialog, QMessageBox, QMenu, QTabWidget)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
+class DocumentTab(QWidget):\n    def __init__(self, document_root_node, main_window_ref, file_path=None):\n        super().__init__()\n        self.document_root_node = document_root_node\n        self.main_window_ref = main_window_ref\n        self.file_path = file_path\n        self.selected_node_in_tab = None\n        self.item_to_node_mapping = {}\n\n        layout = QHBoxLayout(self)\n\n        self.tree_widget = QTreeWidget()\n        self.tree_widget.setHeaderLabel("Nodes")\n        self.tree_widget.itemSelectionChanged.connect(self.on_tab_item_selection_changed)\n        self.tree_widget.itemChanged.connect(self.on_tab_item_changed)\n        self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu) # For later use\n        # self.tree_widget.customContextMenuRequested.connect(self.open_tab_context_menu) # For later use\n        layout.addWidget(self.tree_widget, 1)\n\n        self.text_edit = QTextEdit()\n        self.text_edit.textChanged.connect(self.update_tab_node_content)\n        # Apply default font from settings (via main_window_ref or direct import of settings)\n        self.text_edit.setFont(QFont(settings.get("default_font", "Arial"), settings.get("default_font_size", 12)))\n        layout.addWidget(self.text_edit, 2)\n\n        self.setLayout(layout)\n        if self.document_root_node:\n            self.refresh_tree_widget()\n\n    def refresh_tree_widget(self):\n        current_selected_path = []\n        if self.selected_node_in_tab:\n            current_selected_path = self.get_node_path_in_tab(self.selected_node_in_tab)\n\n        self.tree_widget.clear()\n        self.item_to_node_mapping.clear()\n        if not self.document_root_node: return\n\n        def _add_items_recursive(parent_qt_item, parent_node_obj):\n            for child_node in parent_node_obj.children:\n                item = QTreeWidgetItem(parent_qt_item, [child_node.name])\n                item.setFlags(item.flags() | Qt.ItemIsEditable)\n                self.item_to_node_mapping[item] = child_node\n                child_node.tree_item = item \n                _add_items_recursive(item, child_node)\n\n        root_item_qt = QTreeWidgetItem(self.tree_widget, [self.document_root_node.name])\n        root_item_qt.setFlags(root_item_qt.flags() | Qt.ItemIsEditable)\n        self.item_to_node_mapping[root_item_qt] = self.document_root_node\n        self.document_root_node.tree_item = root_item_qt\n        _add_items_recursive(root_item_qt, self.document_root_node)\n        self.tree_widget.expandItem(root_item_qt)\n\n        if current_selected_path:\n            item_to_select = root_item_qt\n            # This path is relative to children of document_root_node if root is displayed\n            # Or relative to document_root_node's parent's children if root is not displayed.\n            # With current logic, path should be from the displayed root (document_root_node).\n            for index in current_selected_path:\n                if item_to_select and index < item_to_select.childCount():\n                    item_to_select = item_to_select.child(index)\n                else:\n                    item_to_select = None\n                    break\n            if item_to_select:\n                self.tree_widget.setCurrentItem(item_to_select)\n\n    def on_tab_item_selection_changed(self):\n        items = self.tree_widget.selectedItems()\n        if items:\n            node = self.item_to_node_mapping.get(items[0])\n            if node:\n                self.selected_node_in_tab = node\n                self.text_edit.setHtml(self.selected_node_in_tab.content)\n            else:\n                self.selected_node_in_tab = None # Should not happen ideally\n                self.text_edit.clear()\n        else:\n            self.selected_node_in_tab = None\n            self.text_edit.clear()\n\n    def on_tab_item_changed(self, item, column):\n        if column == 0:\n            node = self.item_to_node_mapping.get(item)\n            if node:\n                node.name = item.text(0)\n                if node == self.document_root_node and not self.file_path:\n                     self.main_window_ref.tab_widget.setTabText(self.main_window_ref.tab_widget.currentIndex(), node.name)\n\n    def update_tab_node_content(self):\n        if self.selected_node_in_tab:\n            self.selected_node_in_tab.content = self.text_edit.toHtml()\n\n    def get_node_path_in_tab(self, node):\n        path = []\n        current = node\n        while current and current.parent and current != self.document_root_node:\n            try:\n                path.insert(0, current.parent.children.index(current))\n            except ValueError:\n                path = [] # Should not happen in a consistent tree\n                break\n            current = current.parent\n        # If current is the document_root_node, the path is complete (it's a child of root or root itself)\n        # If current is None or current.parent is None before reaching root, path might be invalid.\n        # This logic assumes path is relative to children of document_root_node for selection purposes within refresh.\n        # However, if node is document_root_node, path should be empty.\n        if node == self.document_root_node:\n            return []\n        return path\n
 
 # Import from utility and temporary
-from utility import Node, save_tree_to_file, load_tree_from_file, import_cherrytree, add_node_to_tree, remove_node_from_tree, move_node_up, move_node_down, indent_node, outdent_node
+from utility import Node, save_tree_to_file, load_tree_from_file, import_cherrytree, add_node_to_tree, remove_node_from_tree, move_node_up, move_node_down, indent_node, outdent_node, save_tree_to_custom_format, load_tree_from_custom_format, merge_trees
 from temporary import tree, selected_node, clipboard, clipboard_action, settings, load_settings, item_to_node
 
 class MainWindow(QMainWindow):
@@ -22,31 +23,19 @@ class MainWindow(QMainWindow):
         if tree is None:
             tree = Node("Root", "")
 
-        # Main layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QHBoxLayout(central_widget)
+# Tabbed layout
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.setCentralWidget(self.tab_widget)
 
-        # Tree view
-        self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderLabel("Nodes")
-        self.tree_widget.itemSelectionChanged.connect(self.on_item_selection_changed)
-        self.tree_widget.itemChanged.connect(self.on_item_changed)
-        self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tree_widget.customContextMenuRequested.connect(self.open_context_menu)
-        layout.addWidget(self.tree_widget, 1)
-
-        # Content display
-        self.text_edit = QTextEdit()
-        self.text_edit.textChanged.connect(self.update_node_content)
-        self.text_edit.setFont(QFont(settings.get("default_font", "Arial"), settings.get("default_font_size", 12)))
-        layout.addWidget(self.text_edit, 2)
 
         # Menu bar
         menubar = self.menuBar()
         file_menu = menubar.addMenu("File")
         file_menu.addAction("Open", self.open_file)
         file_menu.addAction("Save", self.save_file)
+        file_menu.addAction("Save As...", self.save_file_as)
         file_menu.addAction("Options", lambda: QMessageBox.information(self, "Options", "Options not implemented yet"))
 
         # Toolbar
@@ -79,74 +68,11 @@ class MainWindow(QMainWindow):
         toolbar.addAction("Center", lambda: self.text_edit.setAlignment(Qt.AlignCenter))
         toolbar.addAction("Right", lambda: self.text_edit.setAlignment(Qt.AlignRight))
 
-        self.refresh_tree()
 
-    def refresh_tree(self):
-        """Rebuild the tree widget while preserving the current selection."""
-        global selected_node
-        selected_path = self.get_node_path(selected_node) if selected_node else []
-        self.tree_widget.clear()
-        item_to_node.clear()
 
-        def add_items(parent_item, node):
-            item = QTreeWidgetItem(parent_item, [node.name])
-            item_to_node[item] = node
-            node.tree_item = item
-            for child in node.children:
-                add_items(item, child)
 
-        root_item = QTreeWidgetItem(self.tree_widget, ["Root"])
-        item_to_node[root_item] = tree
-        tree.tree_item = root_item
-        for child in tree.children:
-            add_items(root_item, child)
 
-        # Restore selection
-        if selected_path:
-            item = self.tree_widget.topLevelItem(0)
-            for index in selected_path:
-                if item and index < item.childCount():
-                    item = item.child(index)
-                else:
-                    item = None
-                    break
-            if item:
-                self.tree_widget.setCurrentItem(item)
-                selected_node = item_to_node[item]
-                self.text_edit.setHtml(selected_node.content)
 
-    def get_node_path(self, node):
-        """Return the path of a node as a list of indices from root."""
-        path = []
-        while node and node.parent:
-            path.insert(0, node.parent.children.index(node))
-            node = node.parent
-        return path
-
-    def on_item_selection_changed(self):
-        """Update text edit with selected node's content."""
-        global selected_node
-        items = self.tree_widget.selectedItems()
-        if items:
-            selected_node = item_to_node[items[0]]
-            self.text_edit.setHtml(selected_node.content)
-        else:
-            selected_node = None
-            self.text_edit.clear()
-
-    def on_item_changed(self, item, column):
-        """Update node name after editing in tree widget."""
-        if column == 0 and item in item_to_node:
-            node = item_to_node[item]
-            node.name = item.text(0)
-
-    def update_node_content(self):
-        """Update the content of the selected node."""
-        if selected_node:
-            html = self.text_edit.toHtml()
-            if "data:image" in html and len(html) > 1024 * 1024:  # 1MB limit
-                QMessageBox.warning(self, "Warning", "Large image detected. Consider resizing.")
-            selected_node.content = html
 
     def open_context_menu(self, position):
         """Show context menu for right-clicked node."""
@@ -175,159 +101,5 @@ class MainWindow(QMainWindow):
         else:
             super().keyPressEvent(event)
 
-    def save_file(self):
-        """Prompt user to save the tree to a file."""
-        global tree
-        file_name, _ = QFileDialog.getSaveFileName(self, "Save File", "", "LiteStone Files (*.lts)")
-        if file_name:
-            try:
-                save_tree_to_file(tree, file_name)
-                QMessageBox.information(self, "Success", "File saved successfully.")
-            except FileNotFoundError:
-                QMessageBox.critical(self, "Error", "File not found.")
-            except json.JSONDecodeError:
-                QMessageBox.critical(self, "Error", "Corrupted file.")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Unexpected error: {str(e)}")
 
-    def open_file(self):
-        """Prompt user to open a file and load the tree."""
-        global tree, selected_node
-        file_name, _ = QFileDialog.getOpenFileName(self, "Open File", "",
-                                                  "LiteStone Files (*.lts);;CherryTree Files (*.ctd);;NoteCase Files (*.ncd)")
-        if file_name:
-            try:
-                tree = load_tree_from_file(file_name)
-                selected_node = None
-                self.refresh_tree()
-                QMessageBox.information(self, "Success", "File loaded successfully.")
-            except ValueError as e:
-                QMessageBox.critical(self, "Error", str(e))
-            except FileNotFoundError:
-                QMessageBox.critical(self, "Error", "File not found.")
-            except json.JSONDecodeError:
-                QMessageBox.critical(self, "Error", "Corrupted file.")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Unexpected error: {str(e)}")
-
-    def add_node(self):
-        """Add a new node to the tree."""
-        global selected_node
-        parent = selected_node if selected_node else tree
-        add_node_to_tree(parent)
-        self.refresh_tree()
-
-    def remove_node(self):
-        """Remove the selected node from the tree."""
-        global selected_node
-        if selected_node and selected_node.parent:
-            remove_node_from_tree(selected_node)
-            selected_node = None
-            self.refresh_tree()
-
-    def move_node_up(self):
-        """Move the selected node up."""
-        global selected_node
-        if selected_node:
-            move_node_up(selected_node)
-            self.refresh_tree()
-
-    def move_node_down(self):
-        """Move the selected node down."""
-        global selected_node
-        if selected_node:
-            move_node_down(selected_node)
-            self.refresh_tree()
-
-    def indent_node(self):
-        """Indent the selected node."""
-        global selected_node
-        if selected_node:
-            indent_node(selected_node)
-            self.refresh_tree()
-
-    def outdent_node(self):
-        """Outdent the selected node."""
-        global selected_node
-        if selected_node:
-            outdent_node(selected_node)
-            self.refresh_tree()
-
-    def copy_node(self):
-        """Copy selected node to clipboard."""
-        global selected_node, clipboard, clipboard_action
-        if selected_node:
-            clipboard = selected_node.copy()
-            clipboard_action = "copy"
-
-    def cut_node(self):
-        """Cut selected node to clipboard."""
-        global selected_node, clipboard, clipboard_action
-        if selected_node and selected_node.parent:
-            clipboard = selected_node.copy()
-            clipboard_action = "cut"
-            remove_node_from_tree(selected_node)
-            selected_node = None
-            self.refresh_tree()
-
-    def paste_node(self):
-        """Paste clipboard node under selected node or root."""
-        global selected_node, clipboard, clipboard_action
-        if clipboard:
-            new_node = clipboard.copy()
-            parent = selected_node if selected_node else tree
-            parent.add_child(new_node)
-            if clipboard_action == "cut":
-                clipboard = None
-                clipboard_action = None
-            self.refresh_tree()
-
-    def rename_node(self):
-        """Start editing selected node's name."""
-        global selected_node
-        if selected_node:
-            item = selected_node.tree_item
-            item.setFlags(item.flags() | Qt.ItemIsEditable)
-            self.tree_widget.editItem(item)
-
-    def delete_node(self):
-        """Delete the selected node (except root)."""
-        global selected_node
-        if selected_node and selected_node.parent:
-            remove_node_from_tree(selected_node)
-            selected_node = None
-            self.refresh_tree()
-        else:
-            QMessageBox.warning(self, "Warning", "Cannot delete the root node.")
-
-    def change_font(self, font):
-        """Change text font."""
-        self.text_edit.setFontFamily(font)
-        settings["default_font"] = font
-
-    def change_font_size(self, size):
-        """Change text font size."""
-        self.text_edit.setFontPointSize(int(size))
-        settings["default_font_size"] = int(size)
-
-    def toggle_bold(self):
-        """Toggle bold formatting."""
-        self.text_edit.setFontWeight(QFont.Bold if self.bold_button.isChecked() else QFont.Normal)
-
-    def closeEvent(self, event):
-        """Save settings on close."""
-        settings["window_width"] = self.width()
-        settings["window_height"] = self.height()
-        try:
-            os.makedirs("data", exist_ok=True)
-            with open("data/persistent.json", "w") as f:
-                json.dump(settings, f, indent=2)
-        except Exception as e:
-            QMessageBox.warning(self, "Warning", f"Could not save settings: {str(e)}")
-        super().closeEvent(event)
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    def get_current_tab(self):\n        return self.tab_widget.currentWidget()\n\n    def close_tab(self, index):\n        widget = self.tab_widget.widget(index)\n        if widget is not None:\n            # TODO: Check for unsaved changes before closing\n            self.tab_widget.removeTab(index)\n            widget.deleteLater() # Important to clean up the widget\n
