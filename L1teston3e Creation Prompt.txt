@@ -47,7 +47,8 @@ File structure...
 
 INSTRUCTION:
 Assess the files/information/plan, and then we will be progressing, all outstanding work and the programs completion...
-1. Determine next steps, asses relevant, sections of code and produce required thinking, determine required alterations, determine optimal implementations. 2. Produce required updats.
+1. Determine next steps, asses relevant, sections of code and produce required thinking, determine required alterations, determine optimal implementations. 
+2. Produce required updates.
 
 REMEMBER:
 Additionally...
