@@ -1,0 +1,57 @@
+UPDATE TO COMPLETION PROMPT:
+
+Determine next steps, asses relevant, sections of code and produce required thinking, determine required alterations, determine optimal implementations, Produce required updats. Additionally...
+- try to print complete updated function(s)/sections.
+- do not shorten function(s).
+- do not print function(s)/section(s) we are not updating.
+- ensure all new maps/lists/globalConstsants/globalVariables/etc go in ".\scripts\temporary.py`, 
+- other scripts are relevantly named, lump general code into utility.py (when it gets to ~600 lines, then we will refractor).
+
+
+
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+
+SESSION START PROMPT FOR LITESTONE:
+
+INFORMATION:
+In a previous session with jules/grok, we were working on creating a Tree-Document Creation/Editing/Viewing program named "L1teston3e". This is intended, not as a feature rich program, but as a program that has ONLY the features I require to make my documents...
+
+Outline...
+- It must have its own optimized format of save file, that will be a single file un-compressed.
+- it should have the tree on the left. right click on node enables options, copy node, cut node, paste node, rename node. holding SHIFT+CTRL with node selected allows for user to move the node with the arrow keys. Additionally the nodes should have the default name "New Node". 
+- nodes display on the right. 
+- top has logical menu options, open, save, options, however, most other options will be done through top panel just under, do not double-site other than what I said. 
+= the menu options should also include options to "Merge Open Documents", which will do so logically.
+- buttons on top panel allow for, add node, remove node, node copy (selected node and subnodes), node paste (node and subnodes), font used, font size dropdown, bold toggle, text align left, text align middle, text align right. 
+- under buttons on top panel should be tabs for differing documents currently opened, so the user may click to switch between the open document.
+- Can load also in "CherryTree" and "NoteCase", while ignoring unsupported options.
+- Can insert, raw/jpg/png images in-line with text, through keyboard copy/paste.
+
+File structure...
+```
+.\LiteStone.bat (batch launcher with menu, to, launch `installer.py` or launch  `requisites.py` or quit the batch)
+ .\installer.py (standalone, that installs python requiredments)
+.\launcher.py (to launch main program)
+.\scripts\ (other required scripts)
+.\scripts\interface.py (the interface specific code, including significant amounts of printed text)
+.\scripts\utilities.py (general functions not relevant to other scripts)
+.\scripts\temporary.py (the file to centralize ALL maps/lists/global variables, so they are all in 1 place AND not causing circular imports)
+.\data\ (container for `persistent.json` and other files that are not installed to the `.\venv`, that is created by the `installer.py` script)
+.\data\persistent.json  (installer script must include creation of a json, to ensure corrupted json can be replaced with default) 
+.\venv\ (the folder that ALL requirements will be installed to)
+
+INSTRUCTION:
+Assess the files/information/plan, and then we will be progressing, all outstanding work and the programs completion...
+1. Determine next steps, asses relevant, sections of code and produce required thinking, determine required alterations, determine optimal implementations. 2. Produce required updats.
+
+REMEMBER:
+Additionally...
+- try to print complete updated function(s)/sections.
+- do not shorten function(s).
+- do not print function(s)/section(s) we are not updating.
+- ensure all new maps/lists/globalConstsants/globalVariables/etc go in ".\scripts\temporary.py`, 
+- other scripts are relevantly named, lump general code into utility.py (when it gets to ~600 lines, then we will refractor).
