@@ -43,6 +43,7 @@ File structure...
 .\data\ (container for `persistent.json` and other files that are not installed to the `.\venv`, that is created by the `installer.py` script)
 .\data\persistent.json  (installer script must include creation of a json, to ensure corrupted json can be replaced with default) 
 .\venv\ (the folder that ALL requirements will be installed to)
+```
 
 INSTRUCTION:
 Assess the files/information/plan, and then we will be progressing, all outstanding work and the programs completion...
