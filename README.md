@@ -12,15 +12,29 @@ This program is a "Private Project" belonging to "Wiseman-Timelord", if you unde
 ========================================================================================================================
     L1teSton3E - Install Result
 ========================================================================================================================
-
 Data directory exists: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\data)
 persistent.json exists: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\data\persistent.json)
-Create requirements.txt: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\requirements.txt)
+requirements.txt exists: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\requirements.txt)
 Virtual environment exists: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\venv)
 Install requirements: Pass (C:\Program_Filez\LiteStone\L1T3ST0NE A001\requirements.txt)
 
 Final Result: Pass
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
 Press enter key to return to Batch Menu...
 ```
 
