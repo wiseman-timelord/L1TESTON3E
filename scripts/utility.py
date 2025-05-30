@@ -143,9 +143,16 @@ def import_notecase(file_name):
     """Imports a NoteCase document (.ncd) into the application's Node structure."""
     conn = None
     try:
-        conn = sqlite3.connect(file_name)
+        # Attempt to connect to the database file
+        try:
+            conn = sqlite3.connect(f"file:{file_name}?mode=ro", uri=True) # Open in read-only mode
+        except sqlite3.OperationalError as e:
+            # This can happen if the file doesn't exist, isn't a SQLite DB, or permissions are wrong
+            raise ValueError(f"Failed to open NoteCase file '{file_name}'. It might be missing, corrupted, or not a valid SQLite database. Original error: {e}")
+
         cursor = conn.cursor()
         
+        # Try to query with html_content first
         try:
             cursor.execute("SELECT id, parent_id, title, html_content FROM nodes ORDER BY parent_id, id")
             all_rows = cursor.fetchall()
@@ -153,71 +160,67 @@ def import_notecase(file_name):
             try:
                 cursor.execute("SELECT id, parent_id, title, rtf_content FROM nodes ORDER BY parent_id, id")
                 all_rows = cursor.fetchall()
-            except sqlite3.OperationalError as e_inner:
-                raise ValueError(f"Could not find expected table/columns in NoteCase DB: {e_inner}")
+            except sqlite3.OperationalError as e_html_err:
+                # If html_content fails, try rtf_content
+                try:
+                    cursor.execute("SELECT id, parent_id, title, rtf_content FROM nodes ORDER BY parent_id, id")
+                    all_rows = cursor.fetchall()
+                except sqlite3.OperationalError as e_rtf_err:
+                    raise ValueError(f"Could not find expected 'nodes' table or required columns (tried html_content and rtf_content) in NoteCase DB '{file_name}'. Errors: HTML attempt -> {e_html_err}, RTF attempt -> {e_rtf_err}")
         
-        app_root_node = Node("Imported NoteCase")
-        db_nodes_map = {}
-        raw_node_data = []
+        app_root_node = Node("Imported NoteCase") # Root node for the imported structure
+        db_nodes_map = {} # To quickly access nodes by their DB ID
+        raw_node_data = [] # Store (id, parent_id) tuples for hierarchy reconstruction
 
+        # First pass: create all Node objects and store them in db_nodes_map
         for row in all_rows:
             node_id, parent_id, title, content_data = row[0], row[1], row[2], row[3]
-            title = title if title else "Untitled"
-            content = str(content_data if content_data is not None else "")
-            app_node = Node(name=title, content=content)
+            
+            # Ensure title is a string, default to "Untitled" if None or empty
+            title_str = title if title else "Untitled"
+            
+            # Ensure content is a string, default to empty string if None
+            content_str = str(content_data) if content_data is not None else ""
+            
+            app_node = Node(name=title_str, content=content_str)
             db_nodes_map[node_id] = app_node
-            raw_node_data.append({'id': node_id, 'parent_id': parent_id})
+            raw_node_data.append({'id': node_id, 'parent_id': parent_id, 'node_obj': app_node})
 
+        # Second pass: build the hierarchy
         for data in raw_node_data:
-            node_id = data['id']
+            app_node = data['node_obj']
             parent_id = data['parent_id']
-            app_node = db_nodes_map.get(node_id)
-            if app_node:
-                parent_app_node = db_nodes_map.get(parent_id)
-                if parent_app_node:
-                    parent_app_node.add_child(app_node)
-                else:
-                    app_root_node.add_child(app_node)
+            
+            if parent_id is not None and parent_id in db_nodes_map:
+                parent_app_node = db_nodes_map[parent_id]
+                parent_app_node.add_child(app_node)
+            else:
+                # Node is a root (or orphaned, becomes a root under our main import node)
+                app_root_node.add_child(app_node)
         
         return app_root_node
 
-    except FileNotFoundError:
-        raise FileNotFoundError(f"NoteCase file not found: {file_name}")
+    # Removed FileNotFoundError catch as the initial sqlite3.connect(uri=True) handles it better by raising OperationalError.
     except sqlite3.Error as e: 
-        raise ValueError(f"Database error with NoteCase file '{file_name}': {e}")
+        # This will catch errors like "file is not a database" if not caught by the more specific OperationalError above,
+        # or other general SQLite errors during query execution if not caught by inner blocks.
+        raise ValueError(f"SQLite database error with NoteCase file '{file_name}': {e}")
+    except ValueError as e: # Re-raise ValueErrors from specific checks
+        raise e
     except Exception as e: 
-        raise RuntimeError(f"An unexpected error occurred during NoteCase import: {e}")
+        # Catch any other unexpected errors during the process
+        raise RuntimeError(f"An unexpected error occurred during NoteCase import of '{file_name}': {e}")
     finally:
         if conn:
             conn.close()
 
 # File operation functions
-def save_tree_to_file(tree, file_name):
-    if not file_name.endswith(".lts"): 
-        file_name += ".lts" 
-    with open(file_name, "w") as f:
-        try:
-            json.dump(tree.to_dict(), f, indent=2)
-        except IOError as e: 
-            raise IOError(f"Error writing JSON to file '{file_name}': {e}")
-        except TypeError as e: 
-            raise TypeError(f"Error serializing tree to JSON: {e}")
-
 def load_tree_from_file(file_name):
     if file_name.endswith(".lts"):
-        try:
-            return load_tree_from_custom_format(file_name)
-        except ValueError: 
-            try:
-                with open(file_name, "r") as f:
-                    data = json.load(f)
-                return Node.from_dict(data)
-            except FileNotFoundError:
-                raise FileNotFoundError(f"LTS file not found: {file_name}")
-            except json.JSONDecodeError:
-                raise ValueError("Invalid LTS file: Not custom binary format and not valid JSON.")
-            except Exception as e:
-                 raise ValueError(f"Error loading LTS as JSON: {e}")
+        # Attempt to load directly using the custom binary format.
+        # Errors from load_tree_from_custom_format (IOError, ValueError for format issues)
+        # will propagate up as per requirements.
+        return load_tree_from_custom_format(file_name)
     elif file_name.endswith(".ctd"):
         return import_cherrytree(file_name)
     elif file_name.endswith(".ncd"):
