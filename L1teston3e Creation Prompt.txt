@@ -15,12 +15,10 @@ Determine next steps, asses relevant, sections of code and produce required thin
 
 
 
-SESSION START PROMPT FOR LITESTONE:
+SESSION START PROMPT FOR `~LITESTONE`:
 
 INFORMATION:
-In a previous session with jules/grok, we were working on creating a Tree-Document Creation/Editing/Viewing program named "L1teston3e". This is intended, not as a feature rich program, but as a program that has ONLY the features I require to make my documents...
-
-Outline...
+In a previous session with jules/grok, we were working on creating a Tree-Document Creation/Editing/Viewing program named "L1teston3e". This is intended, not as a feature rich program, but as a program that has ONLY the features I require to make my documents. Outline...
 - It must have its own optimized format of save file, that will be a single file un-compressed.
 - it should have the tree on the left. right click on node enables options, copy node, cut node, paste node, rename node. holding SHIFT+CTRL with node selected allows for user to move the node with the arrow keys. Additionally the nodes should have the default name "New Node". 
 - nodes display on the right. 
@@ -32,6 +30,7 @@ Outline...
 - Can insert, raw/jpg/png images in-line with text, through keyboard copy/paste.
 
 File structure...
+Here is the file structure for `~LITESTONE`
 ```
 .\LiteStone.bat (batch launcher with menu, to, launch `installer.py` or launch  `requisites.py` or quit the batch)
  .\installer.py (standalone, that installs python requiredments)
@@ -57,3 +56,4 @@ Additionally...
 - do not print function(s)/section(s) we are not updating.
 - ensure all new maps/lists/globalConstsants/globalVariables/etc go in ".\scripts\temporary.py`, 
 - other scripts are relevantly named, lump general code into utility.py (when it gets to ~600 lines, then we will refractor).
+- the name `~LITESTONE` is written so, because the name will be changed/tuned while the program is in creation, until the spelling is decided upon.
