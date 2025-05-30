@@ -2,7 +2,10 @@
 Non-Detailed Private Project.
 
 ## Description:
-This program is a "Private Project" belonging to "Wiseman-Timelord", if you understand its purpose/value, then you understand why.
+This program is a "Private Project" belonging to "Wiseman-Timelord", if you understand its purpose/value, then you understand why, but otherwise...
+- The name `L1teston3e` is provisional.
+- In short its a tree document editor capable of reading/editing/saving/merging, the formats, cherrytree, notecase, L1teston3e.
+- This project should have come before `LightStone`, having to go back now. 
 
 ## Disclaimer:
 - For "Authorisation" upon storage/use of L1teston3e, this comes at a non-negotiatable price of "£50,000,000", paid beforehand to and confirmed to be paid by, "Wiseman-Timelor", by those specific individuals intending to use/keep the program, with the exeption of strictly only, GitHub (whom are authorised to be storing the program, for the purpose of maintaining this repository), Deepseek/Grok/Jules (whom are authoried to store for the purposes of facilitating/maintaining sessions of "AI-Programming" for "Wiseman-Timelord").
